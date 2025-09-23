@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "GutterAid Patterns Configuration",
+  "description": "Configuration file for GutterAid task patterns",
+  "type": "object",
+  "definitions": {
+    "matcher": {
+      "type": "object",
+      "properties": {
+        "filePattern": {
+          "type": "string",
+          "description": "Glob pattern to match file paths (e.g., '**/*.test.js'). Uses picomatch internally."
+        },
+        "taskPattern": {
+          "type": "string",
+          "description": "Regular expression to find tasks within matched files"
+        },
+        "scripts": {
+          "type": "array",
+          "description": "Array of scripts for [Run, Debug, Coverage] operations",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "oneOf": [
+              {
+                "type": "array",
+                "description": "Command and arguments to execute. Can use ${group:1}, ${group:2}, etc. for regex groups, ${input:id} for inputs, and ${vscode:variable} for VS Code variables",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1
+              },
+              {
+                "type": "array",
+                "description": "Empty array if no script is defined",
+                "maxItems": 0
+              },
+              {
+                "type": "null",
+                "description": "Null if no script is defined"
+              }
+            ]
+          }
+        },
+        "name": {
+          "type": "string",
+          "description": "Optional name template for tests. Can use ${group:1}, ${group:2}, etc. for regex groups and ${vscode:variable} for VS Code variables"
+        },
+        "terminal": {
+          "type": "string",
+          "description": "Terminal to run the task in--'new' will always spawn a new terminal, 'active' will use the currently open terminal (or spawn a new one if there is none), and any other string will be used as a terminal id (spawning a terminal with that id if there is none). Default is 'active'."
+        },
+        "killSignal": {
+          "type": "string",
+          "description": "Signal(s) to send to the task process when cancelling (e.g., '\\u0003' for Ctrl+C). Default is '\\u0003'. Can also be 'dispose', which will dispose of the whole terminal."
+        }
+      },
+      "additionalProperties": false
+    },
+    "input": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for this input"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["promptString", "pickString"],
+          "description": "Type of input: promptString for text input, pickString for selection",
+          "default": "promptString"
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional description shown to the user"
+        },
+        "default": {
+          "type": "string",
+          "description": "Optional default value"
+        },
+        "options": {
+          "type": "array",
+          "description": "Array of options for pickString type",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "pickString"
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "required": ["options"]
+          }
+        }
+      ]
+    }
+  },
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Version of gutteraid that this configuration was written for"
+    },
+    "matchers": {
+      "type": "array",
+      "description": "Array of task matchers that define file patterns, task patterns, and scripts to run",
+      "items": {
+        "allOf": [
+          {
+            "$ref": "#/definitions/matcher"
+          },
+          {
+            "required": ["filePattern", "taskPattern", "scripts"]
+          }
+        ]
+      }
+    },
+    "inputs": {
+      "type": "array",
+      "description": "Optional array of input definitions for task scripts",
+      "items": {
+        "allOf": [
+          {
+            "$ref": "#/definitions/input"
+          },
+          {
+            "required": ["id", "type"]
+          }
+        ]
+      }
+    }
+  },
+  "required": ["version", "matchers"],
+  "additionalProperties": false
+}

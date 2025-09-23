@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "GutterAid Local Patterns Configuration",
+  "description": "Local configuration file for GutterAid task patterns that extends/overrides base patterns",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Version of gutteraid that this configuration was written for. Should probably match the base patterns version."
+    },
+    "matchers": {
+      "type": "array",
+      "description": "Array of task matchers that define file patterns, task patterns, and scripts to run. Can override base matchers with the same filePattern.",
+      "items": {
+        "allOf": [
+          {
+            "$ref": "./patterns.schema.json#/definitions/matcher"
+          },
+          {
+            "required": ["filePattern", "taskPattern"]
+          }
+        ]
+      }
+    },
+    "inputs": {
+      "type": "array",
+      "description": "Optional array of input definitions for task scripts. Can override base inputs with the same id.",
+      "items": {
+        "allOf": [
+          {
+            "$ref": "./patterns.schema.json#/definitions/input"
+          },
+          {
+            "required": ["id"]
+          }
+        ]
+      }
+    }
+  },
+  "required": ["version"],
+  "additionalProperties": false
+}

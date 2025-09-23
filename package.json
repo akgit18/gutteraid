@@ -1,0 +1,124 @@
+{
+  "name": "gutteraid",
+  "displayName": "GutterAid",
+  "description": "Allow users to define tasks that can be run from icons in the gutter when a regex match is found",
+  "icon": "icon.png",
+  "galleryBanner": {
+    "color": "#444444",
+    "theme": "light"
+  },
+  "publisher": "alek",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/akgit18/gutteraid.git"
+  },
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.59.0"
+  },
+  "license": "SEE LICENSE IN LICENSE",
+  "categories": [
+    "Testing",
+    "Other"
+  ],
+  "keywords": [
+    "gutter",
+    "gutter icon",
+    "gutter button",
+    "icon in gutter",
+    "task",
+    "tasks",
+    "task icon",
+    "testing",
+    "test",
+    "tests",
+    "run",
+    "run icon",
+    "run button",
+    "play button",
+    "play icon",
+    "line numbers",
+    "side of line numbers"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "gutteraid.resetInputs",
+        "title": "Reset task input choices for all tasks"
+      },
+      {
+        "command": "gutteraid.resetInputsForTask",
+        "title": "Reset task input choices for this task"
+      }
+    ],
+    "configuration": {
+      "title": "GutterAid",
+      "properties": {
+        "gutteraid.askForInputsEveryTime": {
+          "type": "boolean",
+          "default": true,
+          "description": "Ask for input values every time tasks are run (if false, cached values are reused)"
+        },
+        "gutteraid.verboseLogging": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable verbose logging to the output console"
+        }
+      }
+    },
+    "menus": {
+      "testing/item/context": [
+        {
+          "command": "gutteraid.resetInputsForTask",
+          "when": "testId =~ /^file:.*:.*$/"
+        },
+        {
+          "command": "gutteraid.resetInputs",
+          "when": "testId =~ /^file:.*:.*$/"
+        }
+      ]
+    },
+    "jsonValidation": [
+      {
+        "fileMatch": ".gutteraid/patterns.json",
+        "url": "./schemas/patterns.schema.json"
+      },
+      {
+        "fileMatch": ".gutteraid/patterns.local.json",
+        "url": "./schemas/patterns.local.schema.json"
+      }
+    ]
+  },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "Malicious authors in an untrusted workspace can modify patterns.json to execute arbitrary code upon click."
+    },
+    "virtualWorkspaces": {
+      "supported": false,
+      "description": "Direct file system access and running arbitrary shell commands, both of which this extension uses, may not be available in virtual workspaces."
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "dependencies": {
+    "picomatch": "4.0.3",
+    "chokidar": "4.0.3"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.59.0",
+    "@types/node": "22.x",
+    "@types/picomatch": "4.0.2",
+    "typescript": "^5.9.2"
+  }
+}
