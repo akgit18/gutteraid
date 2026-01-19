@@ -55,10 +55,6 @@ Since this extension heavily relies on the configuration mentioned above, errors
 
 ### Settings
 
-* `gutteraid.patternsDir`
-  * Directory containing patterns.json (and optionally patterns.local.json) configuration files.
-  * String. Default: `{workspace root}/.gutteraid`
-
 * `gutteraid.askForInputsEveryTime`
   * Whether to ask for user inputs every time a command is run, or just re-use the previous inputs. If set to false, you can reset inputs for a task by right-clicking the task's icon, revealing it in the test explorer, right clicking it in the test explorer, clicking `Reset task input choices for this task`.
   * Now that you know how to reset previous inputs when you want to change them, I recommend setting this to false.
