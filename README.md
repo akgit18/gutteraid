@@ -51,7 +51,7 @@ The following substitutions will be made for `scripts`:
 
 Tasks should be found when opening a file that matches the filePattern and contains instances of the taskPattern.
 
-Since this extension heavily relies on the configuration mentioned above, errors in the configuration, such as JSON or RegExp parsing, may prevent it from working properly. The setting `gutteraid.verboseLogs` is provided for debugging.
+Since this extension heavily relies on the configuration mentioned above, errors in the configuration, such as JSON or RegExp parsing, may prevent it from working properly. Such errors should be logged to the extension's output channel ("GutterAid"). Extra logs will be shown when lowering the log level to Debug or Trace.
 
 ### Settings
 
@@ -60,10 +60,8 @@ Since this extension heavily relies on the configuration mentioned above, errors
   * Now that you know how to reset previous inputs when you want to change them, I recommend setting this to false.
   * Boolean. Default: `true`
 
-* `gutteraid.verboseLogging`
-  * More verbose logging, to help you debug why your configuration isn't working.
-  * When off, log- and info-level events are not shown, while warn- and error-level events are logged to the extension host output.
-  * When on, log- and info-level events are also logged to the extension host output, and while warn- and error-level events are also shown as warning/error message growls.
+* `gutteraid.alertOnError`
+  * Also alert errors that get logged to the extension's output channel.
   * Boolean. Default: `false`
 
 ### FAQ

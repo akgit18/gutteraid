@@ -63,10 +63,10 @@
           "default": true,
           "description": "Ask for input values every time tasks are run (if false, cached values are reused)"
         },
-        "gutteraid.verboseLogging": {
+        "gutteraid.alertOnError": {
           "type": "boolean",
           "default": false,
-          "description": "Enable verbose logging to the output console"
+          "description": "Show an alert in addition to logging errors/warnings"
         }
       }
     },

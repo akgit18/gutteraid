@@ -47,32 +47,18 @@ let taskMatchers: TaskMatcher[] = [];
 let inputCache: Map<string, Map<string, string>> = new Map(); // matcherId -> inputId -> value
 let inputDefinitions: Map<string, TaskInput> = new Map(); // inputId -> TaskInput
 
-function maybeLogInfo(message: string, ...args: unknown[]) {
-	const config = vscode.workspace.getConfiguration('gutteraid');
-	if (config.get<boolean>('verboseLogging', false)) {
-		console.info(message, ...args);
-	}
-}
-
-function maybeLogLog(message: string, ...args: unknown[]) {
-	const config = vscode.workspace.getConfiguration('gutteraid');
-	if (config.get<boolean>('verboseLogging', false)) {
-		console.log(message, ...args);
-	}
-}
-
 function logWarn(message: string, ...args: unknown[]) {
-	console.warn(message, ...args);
+	outputChannel.warn(message, ...args);
 	const config = vscode.workspace.getConfiguration('gutteraid');
-	if (config.get<boolean>('verboseLogging', false)) {
+	if (config.get<boolean>('alertOnError', false)) {
 		vscode.window.showWarningMessage(message)
 	}
 }
 
 function logError(message: string, ...args: unknown[]) {
-	console.error(message, ...args);
+	outputChannel.error(message, ...args);
 	const config = vscode.workspace.getConfiguration('gutteraid');
-	if (config.get<boolean>('verboseLogging', false)) {
+	if (config.get<boolean>('alertOnError', false)) {
 		vscode.window.showErrorMessage(message)
 	}
 }
@@ -110,7 +96,7 @@ function watchTaskPatternsFile({dirName, basePatternsPath, localPatternsPath, co
 	controller: vscode.TestController;
 	context: vscode.ExtensionContext
 }) {
-	maybeLogLog(`Watching patterns dir: ${dirName}`);
+	outputChannel.trace(`Watching patterns dir: ${dirName}`);
 	// Use chokidar for more reliable file watching, especially across version control operations
 	// vscode claims that its built-in file watcher will monitor files that do not yet exist,
 	// and that watchers for deleted files will get deleted and reactivated upon recreation,
@@ -125,13 +111,13 @@ function watchTaskPatternsFile({dirName, basePatternsPath, localPatternsPath, co
 	const handlePatternsFileChange = new ResettingFunctionDebouncer((changedFilePath: string, stats: fs.Stats | undefined) => {
 		if ((changedFilePath === basePatternsPath || changedFilePath === localPatternsPath)) {
 			if (!fs.existsSync(basePatternsPath) && !fs.existsSync(localPatternsPath)) {
-				maybeLogLog('All patterns files deleted, clearing tasks...');
+				outputChannel.debug('All patterns files deleted, clearing tasks...');
 				taskMatchers = [];
 				inputDefinitions.clear();
 				inputCache.clear();
 				controller.items.replace([]);
 			} else {
-				maybeLogLog(`Patterns file changed: ${changedFilePath}, reloading...`);
+				outputChannel.debug(`Patterns file changed: ${changedFilePath}, reloading...`);
 				loadTaskPatterns(basePatternsPath, localPatternsPath);
 				if (vscode.window.activeTextEditor) {
 					processDocument(vscode.window.activeTextEditor.document, controller);
@@ -153,9 +139,12 @@ function watchTaskPatternsFile({dirName, basePatternsPath, localPatternsPath, co
 	context.subscriptions.push({dispose: unwatch});
 }
 
+let outputChannel: vscode.LogOutputChannel
 
 export function activate(context: vscode.ExtensionContext) {
-	console.log('Activating GutterAid extension...');
+	outputChannel = vscode.window.createOutputChannel("GutterAid", {log: true});
+	outputChannel.trace('Activating GutterAid extension...');
+	
 	const controller = vscode.tests.createTestController('gutteraid', 'GutterAid Tests');
 	context.subscriptions.push(controller);
 
@@ -168,7 +157,7 @@ export function activate(context: vscode.ExtensionContext) {
 	const fullPatternsDir = path.join(workspaceFolder.uri.fsPath, '.gutteraid');
 	const basePatternsPath = path.join(fullPatternsDir, 'patterns.json');
 	const localPatternsPath = path.join(fullPatternsDir, 'patterns.local.json');
-	maybeLogInfo(`Using patterns directory: ${fullPatternsDir}`);
+	outputChannel.trace(`Using patterns directory: ${fullPatternsDir}`);
 
 	// Load task patterns on activation
 	loadTaskPatterns(basePatternsPath, localPatternsPath);
@@ -190,7 +179,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Watch for when files are opened in the editor
 	const openFileChangeWatcher = vscode.window.onDidChangeActiveTextEditor(editor => {
-		maybeLogLog(`Active editor changed: ${editor ? editor.document.uri.fsPath : 'None'}`);
+		outputChannel.trace(`Active editor changed: ${editor ? editor.document.uri.fsPath : 'None'}`);
 		if (editor) {
 			processDocument(editor.document, controller);
 		}
@@ -201,7 +190,6 @@ export function activate(context: vscode.ExtensionContext) {
 	// Does not use onDidSaveTextDocument because files may be changed and persisted without being saved
 	const documentChangeWatcher = vscode.workspace.onDidChangeTextDocument(event => {
 		if (!event.document.isDirty) {
-			maybeLogLog(`Document changed: ${event.document.uri.fsPath}`);
 			processDocument(event.document, controller);
 		}
 	});
@@ -229,29 +217,36 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 	context.subscriptions.push(resetInputsForTaskCommand);
 
-	console.log('GutterAid extension activated.');
+	outputChannel.trace('GutterAid extension activated.');
 }
 
 export function deactivate() {
-	console.log('GutterAid extension deactivated.');
+	outputChannel.trace('GutterAid extension deactivated.');
+	outputChannel.dispose()
 }
 
 
 function processDocument(document: vscode.TextDocument, controller: vscode.TestController) {
-	maybeLogLog(`Processing document: ${document.uri.fsPath}`);
+	// always ignore this extension's output channel
+	if (document.uri.scheme === 'output' && document.fileName.endsWith(outputChannel.name)) {
+		return;
+	}
+
+	outputChannel.debug(`Processing document: ${document.uri.fsPath}`);
+
 	const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
-	maybeLogInfo(`Workspace folder: ${workspaceFolder ? workspaceFolder.uri.fsPath : 'None'}`);
+	outputChannel.trace(`Workspace folder: ${workspaceFolder ? workspaceFolder.uri.fsPath : 'None'}`);
 	if (!workspaceFolder) {
 		return;
 	}
 
 	const relativePath = path.relative(workspaceFolder.uri.fsPath, document.uri.fsPath);
-	maybeLogInfo(`Relative path: ${relativePath}`);
+	outputChannel.trace(`Relative path: ${relativePath}`);
 
 	// Remove existing test items for this document
 	const documentPrefix = `${document.uri.toString()}:`;
 	controller.items.forEach(item => {
-		maybeLogLog(`Removing existing test item: ${item.id}`);
+		outputChannel.debug(`Removing existing test item: ${item.id}`);
 		if (item.id.startsWith(documentPrefix)) {
 			controller.items.delete(item.id);
 		}
@@ -259,20 +254,20 @@ function processDocument(document: vscode.TextDocument, controller: vscode.TestC
 
 	// Find the first matching pattern
 	const matcher = taskMatchers.find(m => m.matchFn(relativePath));
-	maybeLogInfo(`Found matcher: ${matcher ? JSON.stringify(matcher) : 'None'}`);
+	outputChannel.debug(`Found matcher: ${matcher ? JSON.stringify(matcher) : 'None'}`);
 	if (!matcher) {
 		return;
 	}
 
 	const text = document.getText();
-	maybeLogInfo(`Document text length: ${text.length}`);
+	outputChannel.trace(`Document text length: ${text.length}`);
 
 	const regex = matcher.compiledRegex;
 	if (!regex) {
 		logError(`No compiled regex available for matcher with pattern '${matcher['taskPattern']}'`);
 		return;
 	}
-	maybeLogInfo(`Using cached regex matcher: `, regex);
+	outputChannel.debug(`Using cached regex matcher: `, regex);
 	for (const match of text.matchAll(regex)) {
 		const {line, character} = document.positionAt(match.index);
 		const taskId = `${documentPrefix}${line}`;
@@ -665,13 +660,13 @@ function resolveVSCodeVariable(variable: string, fileUri: vscode.Uri, workspaceF
  */
 function loadTaskPatterns(patternsPath: string, localPatternsPath: string): TaskPatterns {
 	const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-	maybeLogInfo(`Loading task patterns from workspace: ${workspaceFolder ? workspaceFolder.uri.fsPath : 'None'}`);
+	outputChannel.trace(`Loading task patterns from workspace: ${workspaceFolder ? workspaceFolder.uri.fsPath : 'None'}`);
 	if (!workspaceFolder) {
 		return { 'matchers': [] };
 	}
 	
-	maybeLogInfo(`Patterns file: ${patternsPath}`);
-	maybeLogInfo(`Local patterns file: ${localPatternsPath}`);
+	outputChannel.trace(`Patterns file: ${patternsPath}`);
+	outputChannel.trace(`Local patterns file: ${localPatternsPath}`);
 
 	let basePatterns: TaskPatterns = { 'matchers': [] };
 	let localPatterns: TaskPatterns = { 'matchers': [] };
@@ -681,19 +676,20 @@ function loadTaskPatterns(patternsPath: string, localPatternsPath: string): Task
 		if (fs.existsSync(patternsPath)) {
 			const content = fs.readFileSync(patternsPath, 'utf8');
 			basePatterns = JSON.parse(content) as TaskPatterns;
-			maybeLogInfo(`Loaded ${basePatterns['matchers'].length} base matchers`);
+			outputChannel.trace(`Loaded ${basePatterns['matchers'].length} base matchers`);
 		}
 
 		// Load patterns.local.json
 		if (fs.existsSync(localPatternsPath)) {
 			const localContent = fs.readFileSync(localPatternsPath, 'utf8');
 			localPatterns = JSON.parse(localContent) as TaskPatterns;
-			maybeLogInfo(`Loaded ${localPatterns['matchers'].length} local matchers`);
+			outputChannel.trace(`Loaded ${localPatterns['matchers'].length} local matchers`);
 		}
 
-		if (basePatterns['version'] !== localPatterns['version']) {
-			logWarn(`Version mismatch between base patterns (${basePatterns['version']}) and local patterns (${localPatterns['version']})`);
-		}
+		// If backwards-incompatibilities are to-be-released, warn
+		// if (basePatterns['version'] !== localPatterns['version']) {
+		// 	logWarn(`Version mismatch between base patterns (${basePatterns['version']}) and local patterns (${localPatterns['version']})`);
+		// }
 
 		// Merge patterns
 		const merged = mergePatterns(basePatterns, localPatterns);
@@ -710,7 +706,7 @@ function loadTaskPatterns(patternsPath: string, localPatternsPath: string): Task
 		for (const matcher of merged['matchers']) {
 			try {
 				const config = vscode.workspace.getConfiguration('gutteraid');
-				const debug = config.get<boolean>('verboseLogging', false);
+				const debug = config.get<boolean>('alertOnError', false);
 				matcher.matchFn = picomatch(matcher['filePattern'], {debug});
 			} catch (error) {
 				logError(`Error creating match functions for file pattern '${matcher['filePattern']}':`, error);
