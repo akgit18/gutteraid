@@ -56,7 +56,8 @@ Since this extension heavily relies on the configuration mentioned above, errors
 ### Settings
 
 * `gutteraid.askForInputsEveryTime`
-  * Whether to ask for user inputs every time a command is run, or just re-use the previous inputs. If set to false, you can reset inputs for a task by right-clicking the task's icon, revealing it in the test explorer, right clicking it in the test explorer, clicking `Reset task input choices for this task`.
+  * Whether to ask for user inputs every time a command is run, or just re-use the previous inputs. If set to false, you can reset inputs for a task by right-clicking the task's gutter icon and selecting the menu item `GutterAid: Reset cached input choices`. This also appears in the context menu for the test item's entry in the test explorer view.
+  * Caching is done on a by-input-id level.
   * Now that you know how to reset previous inputs when you want to change them, I recommend setting this to false.
   * Boolean. Default: `true`
 

@@ -203,7 +203,7 @@ export function activate(context: vscode.ExtensionContext) {
 	// Register reset inputs commands
 	const resetInputsCommand = vscode.commands.registerCommand('gutteraid.resetInputs', () => {
 		inputCache.clear();
-		vscode.window.showInformationMessage('Task input choices have been reset.');
+		showInputResetMessage();
 	});
 	context.subscriptions.push(resetInputsCommand);
 
@@ -212,8 +212,8 @@ export function activate(context: vscode.ExtensionContext) {
 			const matcher = (taskItem as any).matcher as TaskMatcher;
 			const matcherId = getMatcherId(matcher);
 			inputCache.delete(matcherId);
-			vscode.window.showInformationMessage(`Input choices reset for task: ${taskItem.label}`);
 		}
+		showInputResetMessage(taskItem.label);
 	});
 	context.subscriptions.push(resetInputsForTaskCommand);
 
@@ -225,6 +225,24 @@ export function deactivate() {
 	outputChannel.dispose()
 }
 
+function showInputResetMessage(taskLabel?: string) {
+	const config = vscode.workspace.getConfiguration('gutteraid');
+	const askEveryTime = config.get<boolean>('askForInputsEveryTime', true);
+	if (askEveryTime) {
+		vscode.window.showInformationMessage<string>(`You do not currently allow caching input choices.`, {modal: true}, 'Enable').then(response => {
+			if (response === 'Enable') {
+				config.update('askForInputsEveryTime', false);
+			}
+		});
+	} else {
+		const message = taskLabel ? `Input choices reset for task: ${taskLabel}` : 'Task input choices have been reset.';
+		vscode.window.showInformationMessage(message, 'OK', 'Disable Caching').then(response => {
+			if (response === 'Disable Caching') {
+				config.update('askForInputsEveryTime', true);
+			}
+		});
+	}
+}
 
 function processDocument(document: vscode.TextDocument, controller: vscode.TestController) {
 	// always ignore this extension's output channel

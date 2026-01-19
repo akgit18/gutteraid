@@ -48,11 +48,11 @@
     "commands": [
       {
         "command": "gutteraid.resetInputs",
-        "title": "Reset task input choices for all tasks"
+        "title": "GutterAid: Reset cached input choices for all tasks"
       },
       {
         "command": "gutteraid.resetInputsForTask",
-        "title": "Reset task input choices for this task"
+        "title": "GutterAid: Reset cached input choices"
       }
     ],
     "configuration": {
@@ -74,10 +74,24 @@
       "testing/item/context": [
         {
           "command": "gutteraid.resetInputsForTask",
+          "group": "2_resetInputs@1",
           "when": "testId =~ /^file:.*:.*$/"
         },
         {
           "command": "gutteraid.resetInputs",
+          "group": "2_resetInputs@2",
+          "when": "testId =~ /^file:.*:.*$/"
+        }
+      ],
+      "testing/item/gutter": [
+        {
+          "command": "gutteraid.resetInputsForTask",
+          "group": "2_resetInputs@1",
+          "when": "testId =~ /^file:.*:.*$/"
+        },
+        {
+          "command": "gutteraid.resetInputs",
+          "group": "2_resetInputs@2",
           "when": "testId =~ /^file:.*:.*$/"
         }
       ]
