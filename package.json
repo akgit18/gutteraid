@@ -5,7 +5,7 @@
   "icon": "icon.png",
   "galleryBanner": {
     "color": "#444444",
-    "theme": "light"
+    "theme": "dark"
   },
   "publisher": "alek",
   "repository": {

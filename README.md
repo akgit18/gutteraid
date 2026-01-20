@@ -67,6 +67,6 @@ Since this extension heavily relies on the configuration mentioned above, errors
 
 ### FAQ
 
-#### Q: Why is this called "GutterAid"?
+**Q:** Why is this called "GutterAid"?
 
-#### A: The area to the left of the line numbers is called the gutter. This extensions aids you in adding run buttons to the gutter. Thus, GutterAid.
+**A:** The area to the left of the line numbers is called the gutter. This extensions aids you in adding run buttons to the gutter. Thus, GutterAid.
