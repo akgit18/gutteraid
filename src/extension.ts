@@ -1,9 +1,10 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
 import * as chokidar from 'chokidar';
 import picomatch from 'picomatch';
+
+import { executeInTerminal } from './shell';
 
 interface TaskInput {
 	'id': string;
@@ -29,12 +30,6 @@ interface TaskMatcher {
 
 function getMatcherId(matcher: TaskMatcher): string {
 	return `${matcher['filePattern']}:${matcher['taskPattern']}`;
-}
-
-function unescapeControlChars(str: string): string {
-	return str.replaceAll(/\\u([0-9a-fA-F]{4})/g, (match, hex) =>
-		String.fromCharCode(parseInt(hex, 16))
-	);
 }
 
 interface TaskPatterns {
@@ -459,78 +454,22 @@ async function runTasks(
 
 			terminal.show();
 
-			const escapeShellArg = (arg: string): string => {
-				if (process.platform === 'win32') {
-					// Escape quotes and backslashes for Windows cmd/PowerShell
-					return `"${arg.replace(/"/g, '""').replace(/\\/g, '\\\\')}"`;
-				} else {
-					// Unix-style escaping: wrap in single quotes and escape any single quotes
-					return `'${arg.replace(/'/g, "'\\''")}'`;
-				}
-			};
-			
-			const command = args.map(escapeShellArg).join(' ');
-			
-			// Create a temporary file to capture exit code
-			const tempFile = path.join(os.tmpdir(), `gutteraid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.txt`);
-			
-			let fullCommand: string;
-			if (process.platform === 'win32') {
-				fullCommand = `${command} && echo %ERRORLEVEL% > "${tempFile}"`;
-			} else {
-				fullCommand = `${command}; EXIT_CODE=$?; echo $EXIT_CODE > "${tempFile}"`;
-			}
-			
-			terminal.sendText(fullCommand, true);
-			run.started(testItem);
-			
-			// Poll the temporary file for the exit code
-			const result = await new Promise<{stdout: string, stderr: string, code: number | null}>((resolve) => {
-				const pollInterval = 1000;
-				let pollTimeout: NodeJS.Timeout | undefined = undefined;
-				const pollForResult = () => {
-					if (fs.existsSync(tempFile)) {
-						try {
-							// extract exit code, clean up temp file, resolve result
-							const exitCodeStr = fs.readFileSync(tempFile, 'utf8').trim();
-							const exitCode = parseInt(exitCodeStr, 10);
-							fs.unlinkSync(tempFile);
-							resolve({ stdout: '', stderr: '', code: isNaN(exitCode) ? null : exitCode });
-						} catch (error) {
-							// File exists but can't read it yet, try again
-							pollTimeout = setTimeout(pollForResult, pollInterval);
-						}
-					} else {
-						// File doesn't exist yet, try again
-						pollTimeout = setTimeout(pollForResult, pollInterval);
-					}
-				};
-				
-				pollForResult();
-				
-				// Handle cancellation
-				const cancellationListener = token.onCancellationRequested(() => {
-					clearTimeout(pollTimeout);
-					try { fs.unlinkSync(tempFile); } catch {}
-					if (matcher['killSignal'] === 'dispose') {
-						terminal.dispose();
-					} else {
-						const signal = unescapeControlChars(matcher['killSignal'] ?? '\\u0003');
-						terminal.sendText(signal, true);
-					}
-					resolve({ stdout: '', stderr: 'Task cancelled', code: null });
-				});
-				context.subscriptions.push(cancellationListener, {dispose: () => clearTimeout(pollTimeout)});
+			const exitCode = await executeInTerminal({
+				terminal,
+				args,
+				token,
+				subscriptions: context.subscriptions,
+				killSignal: matcher['killSignal'],
+				outputChannel,
 			});
 
 			// Mark task result based on exit code
 			if (token.isCancellationRequested) {
 				run.skipped(testItem);
-			} else if (result.code === 0) {
+			} else if (exitCode === 0) {
 				run.passed(testItem);
 			} else {
-				const errorMessage = result.stderr || result.stdout || `Process exited with code ${result.code}`;
-				run.failed(testItem, new vscode.TestMessage(errorMessage));
+				run.failed(testItem, new vscode.TestMessage(`Process exited with code ${exitCode}`));
 			}
 			
 		} catch (error) {
