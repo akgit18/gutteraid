@@ -106,14 +106,13 @@ function watchTaskPatternsFile({dirName, basePatternsPath, localPatternsPath, co
 	const handlePatternsFileChange = new ResettingFunctionDebouncer((changedFilePath: string, stats: fs.Stats | undefined) => {
 		if ((changedFilePath === basePatternsPath || changedFilePath === localPatternsPath)) {
 			if (!fs.existsSync(basePatternsPath) && !fs.existsSync(localPatternsPath)) {
-				outputChannel.debug('All patterns files deleted, clearing tasks...');
-				taskMatchers = [];
-				inputDefinitions.clear();
-				inputCache.clear();
-				controller.items.replace([]);
+				outputChannel.debug('All patterns files deleted...');
+				// It is safe to invoke it since `loadTaskPatterns` fallbacks to
+				// empty list of matchers in case of non-existing configuration files.
+				updateTaskPatterns(basePatternsPath, localPatternsPath);
 			} else {
 				outputChannel.debug(`Patterns file changed: ${changedFilePath}, reloading...`);
-				loadTaskPatterns(basePatternsPath, localPatternsPath);
+				updateTaskPatterns(basePatternsPath, localPatternsPath);
 				if (vscode.window.activeTextEditor) {
 					processDocument(vscode.window.activeTextEditor.document, controller);
 				}
@@ -154,10 +153,15 @@ export function activate(context: vscode.ExtensionContext) {
 	const localPatternsPath = path.join(fullPatternsDir, 'patterns.local.json');
 	outputChannel.trace(`Using patterns directory: ${fullPatternsDir}`);
 
-	// Load task patterns on activation
-	loadTaskPatterns(basePatternsPath, localPatternsPath);
+	// Load task patterns from file and settings on activation
+	updateTaskPatterns(basePatternsPath, localPatternsPath);
 
 	watchTaskPatternsFile({dirName: fullPatternsDir, basePatternsPath, localPatternsPath, controller, context});
+	vscode.workspace.onDidChangeConfiguration(e => {
+		if (e.affectsConfiguration('gutteraid.matchers') || e.affectsConfiguration('gutteraid.mergeMode')) {
+		  updateTaskPatterns(basePatternsPath, localPatternsPath)
+		}
+	  });
 
 	// Set up task run handler
 	controller.createRunProfile('Run Tasks', vscode.TestRunProfileKind.Run, (request, token) => {
@@ -614,6 +618,42 @@ function resolveVSCodeVariable(variable: string, fileUri: vscode.Uri, workspaceF
 }
 
 /**
+ * Updates patterns merging extension specific configuration files and matchers defined in
+ * VSCode settings depending of 'mergeMode' setting value, default to using extension specific
+ * configuration.
+ */
+function updateTaskPatterns(patternsPath: string, localPatternsPath: string): TaskPatterns {
+	// Read the setting
+	const config = vscode.workspace.getConfiguration('gutteraid');
+	const matchers = config.get('matchers') as TaskPatterns;
+
+	// Update extension behavior
+	const loaded = loadTaskPatterns(patternsPath, localPatternsPath)
+
+	let final;
+	const mode = config.get('mergeMode')
+	switch(mode) {
+		case 'fileSystemOnly':
+			final = loaded;
+			break;
+		case 'configurationOnly':
+			final = matchers;
+			break;
+		case 'fileSystemFirst':
+			final = mergePatterns(matchers as TaskPatterns, loaded);
+			break;
+		case 'configurationFirst':
+			final = mergePatterns(loaded, matchers as TaskPatterns);
+			break;
+		default:
+			logError(`Unexhaustive switch on 'mergeMode' configuration value: ${mode}. Using loaded config.`);
+			final = loaded;
+	}
+
+	return processTaskPatterns(final);
+}
+
+/**
  * Extracts regex patterns of task files to read, regex patterns of what tasks to look for in such files, and what commands to run based on the regex matches
  * The default location for the settings file is `.gutteraid/patterns.json`, but this can be changed in extension settings.
  */
@@ -650,43 +690,48 @@ function loadTaskPatterns(patternsPath: string, localPatternsPath: string): Task
 		// 	logWarn(`Version mismatch between base patterns (${basePatterns['version']}) and local patterns (${localPatterns['version']})`);
 		// }
 
-		// Merge patterns
-		const merged = mergePatterns(basePatterns, localPatterns);
-
-		// Parse input definitions
-		inputDefinitions.clear();
-		if (merged['inputs']) {
-			for (const input of merged['inputs']) {
-				inputDefinitions.set(input['id'], input);
-			}
-		}
-
-		// Store match functions and compiled regexes for each matcher
-		for (const matcher of merged['matchers']) {
-			try {
-				const config = vscode.workspace.getConfiguration('gutteraid');
-				const debug = config.get<boolean>('alertOnError', false);
-				matcher.matchFn = picomatch(matcher['filePattern'], {debug});
-			} catch (error) {
-				logError(`Error creating match functions for file pattern '${matcher['filePattern']}':`, error);
-				matcher.matchFn = () => false;
-			}
-
-			try {
-				matcher.compiledRegex = new RegExp(matcher['taskPattern'], 'gm');
-			} catch (error) {
-				logError(`Error compiling regex for task pattern '${matcher['taskPattern']}':`, error);
-				matcher.compiledRegex = undefined;
-			}
-		}
-
-		taskMatchers = merged['matchers'];
-		return merged;
+		// Merge patterns and return merged result
+		return mergePatterns(basePatterns, localPatterns);
 	} catch (error) {
 		logError('Failed to load task patterns:', error);
 	}
 
 	return { 'matchers': [] };
+}
+
+/**
+ * Proceses separate patterns' configuration stanzas. Updates global `taskMatchers` value.
+ */
+function processTaskPatterns(patterns: TaskPatterns): TaskPatterns {
+	// Parse input definitions
+	inputDefinitions.clear();
+	if (patterns['inputs']) {
+		for (const input of patterns['inputs']) {
+			inputDefinitions.set(input['id'], input);
+		}
+	}
+
+	// Store match functions and compiled regexes for each matcher
+	for (const matcher of patterns['matchers']) {
+		try {
+			const config = vscode.workspace.getConfiguration('gutteraid');
+			const debug = config.get<boolean>('alertOnError', false);
+			matcher.matchFn = picomatch(matcher['filePattern'], {debug});
+		} catch (error) {
+			logError(`Error creating match functions for file pattern '${matcher['filePattern']}':`, error);
+			matcher.matchFn = () => false;
+		}
+
+		try {
+			matcher.compiledRegex = new RegExp(matcher['taskPattern'], 'gm');
+		} catch (error) {
+			logError(`Error compiling regex for task pattern '${matcher['taskPattern']}':`, error);
+			matcher.compiledRegex = undefined;
+		}
+	}
+
+	taskMatchers = patterns['matchers'];
+	return patterns;
 }
 
 function mergePatterns(base: TaskPatterns, local: TaskPatterns): TaskPatterns {

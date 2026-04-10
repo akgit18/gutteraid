@@ -12,7 +12,7 @@
     "type": "git",
     "url": "https://github.com/akgit18/gutteraid.git"
   },
-  "version": "0.0.2",
+  "version": "0.0.3",
   "engines": {
     "vscode": "^1.59.0"
   },
@@ -67,6 +67,145 @@
           "type": "boolean",
           "default": false,
           "description": "Show an alert in addition to logging errors/warnings"
+        },
+        "gutteraid.mergeMode": {
+          "type": "string",
+          "default": "fileSystemOnly",
+          "enum": [
+            "fileSystemOnly",
+            "configurationOnly",
+            "fileSystemFirst",
+            "configurationFirst"
+          ],
+          "enumDescriptions": [
+            "Use only matchers configured in extensions special configuration files.",
+            "Use only matchers configured in VSCode settings.",
+            "Merge VSCode settings into extesions special configuration files.",
+            "Merge extensinsion special configuratrion files into VSCode settings."
+          ],
+          "markdownDescription": "Whether and how to merge the configured matchers."
+        },
+        "gutteraid.matchers": {
+          "type": "object",
+          "markdownDescription": "Matchers configuration. Usage of this configuration item depens on `#gutteraid.mergeMode#`.",
+          "defualt": {
+            "version": "0.0.3",
+            "matchers": [
+              {
+                "filePattern": "**/*.py",
+                "taskPattern": "def (test_.*?)\\(",
+                "scripts": [
+                  [
+                    "pytest",
+                    "${vscode:file}::${vscode:lineNumber}"
+                  ]
+                ]
+              }
+            ]
+          },
+          "properties": {
+            "version": {
+              "type": "string",
+              "description": "Version of gutteraid that this configuration was written for"
+            },
+            "matchers": {
+              "type": "array",
+              "description": "Array of task matchers that define file patterns, task patterns, and scripts to run",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "filePattern": {
+                    "type": "string",
+                    "description": "Glob pattern to match file paths (e.g., '**/*.test.js'). Uses picomatch internally."
+                  },
+                  "taskPattern": {
+                    "type": "string",
+                    "description": "Regular expression to find tasks within matched files"
+                  },
+                  "scripts": {
+                    "type": "array",
+                    "description": "Array of scripts for [Run, Debug, Coverage] operations",
+                    "minItems": 1,
+                    "maxItems": 3,
+                    "items": {
+                      "oneOf": [
+                        {
+                          "type": "array",
+                          "description": "Command and arguments to execute. Can use ${group:1}, ${group:2}, etc. for regex groups, ${input:id} for inputs, and ${vscode:variable} for VS Code variables",
+                          "items": {
+                            "type": "string"
+                          },
+                          "minItems": 1
+                        },
+                        {
+                          "type": "array",
+                          "description": "Empty array if no script is defined",
+                          "maxItems": 0
+                        },
+                        {
+                          "type": "null",
+                          "description": "Null if no script is defined"
+                        }
+                      ]
+                    }
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "Optional name template for tests. Can use ${group:1}, ${group:2}, etc. for regex groups and ${vscode:variable} for VS Code variables"
+                  },
+                  "terminal": {
+                    "type": "string",
+                    "description": "Terminal to run the task in--'new' will always spawn a new terminal, 'active' will use the currently open terminal (or spawn a new one if there is none), and any other string will be used as a terminal id (spawning a terminal with that id if there is none). Default is 'active'."
+                  },
+                  "killSignal": {
+                    "type": "string",
+                    "description": "Signal(s) to send to the task process when cancelling (e.g., '\\u0003' for Ctrl+C). Default is '\\u0003'. Can also be 'dispose', which will dispose of the whole terminal."
+                  }
+                }
+              }
+            }
+          },
+          "inputs": {
+            "type": "array",
+            "description": "Optional array of input definitions for task scripts",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Unique identifier for this input"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "promptString",
+                    "pickString"
+                  ],
+                  "enumDescriptions": [
+                    "Text input.",
+                    "Selection."
+                  ],
+                  "description": "Type of input.",
+                  "default": "promptString"
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Optional description shown to the user"
+                },
+                "default": {
+                  "type": "string",
+                  "description": "Optional default value"
+                },
+                "options": {
+                  "type": "array",
+                  "description": "Array of options for pickString type",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
