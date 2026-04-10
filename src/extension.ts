@@ -139,7 +139,7 @@ let outputChannel: vscode.LogOutputChannel
 export function activate(context: vscode.ExtensionContext) {
 	outputChannel = vscode.window.createOutputChannel("GutterAid", {log: true});
 	outputChannel.trace('Activating GutterAid extension...');
-	
+
 	const controller = vscode.tests.createTestController('gutteraid', 'GutterAid Tests');
 	context.subscriptions.push(controller);
 
@@ -148,7 +148,7 @@ export function activate(context: vscode.ExtensionContext) {
 		logError('No workspace folder found. GutterAid requires an open workspace.');
 		return;
 	}
-	
+
 	const fullPatternsDir = path.join(workspaceFolder.uri.fsPath, '.gutteraid');
 	const basePatternsPath = path.join(fullPatternsDir, 'patterns.json');
 	const localPatternsPath = path.join(fullPatternsDir, 'patterns.local.json');
@@ -289,7 +289,7 @@ function processDocument(document: vscode.TextDocument, controller: vscode.TestC
 				const groupIndex = parseInt(index);
 				return match[groupIndex] || '';
 			})?.replace(/\$\{vscode:([^}]+)\}/g, (_, variable) => {
-				return resolveVSCodeVariable(variable, document.uri, workspaceFolder);
+				return resolveVSCodeVariable(variable, document.uri, workspaceFolder, line);
 			}) ?? match[1] ?? taskId;
 
 		// Create test item
@@ -328,7 +328,7 @@ async function runTasks(
 ) {
 	const run = controller.createTestRun(request);
 	const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-	
+
 	if (!workspaceFolder) {
 		logError('No workspace folder found');
 		run.end();
@@ -344,14 +344,14 @@ async function runTasks(
 
 	while (queue.length > 0 && !token.isCancellationRequested) {
 		const testItem = queue.pop()!;
-		
+
 		if (request.exclude?.includes(testItem)) {
 			continue;
 		}
 
 		const matcher = (testItem as any).matcher as TaskMatcher;
 		const matchGroups = (testItem as any).matchGroups as string[];
-		
+
 		if (!matcher) {
 			continue;
 		}
@@ -373,7 +373,7 @@ async function runTasks(
 				run.skipped(testItem);
 				continue;
 			}
-			
+
 			// Process arguments
 			const args = script.map(arg => {
 				// Replace ${group:1}, ${group:2}, etc. with match groups
@@ -381,17 +381,17 @@ async function runTasks(
 					const groupIndex = parseInt(index) - 1;
 					return matchGroups[groupIndex] || '';
 				});
-				
+
 				// Replace ${input:id} with input values
 				processedArg = processedArg.replace(/\$\{input:([^}]+)\}/g, (match, inputId) => {
 					return inputs.get(inputId) || '';
 				});
-				
+
 				// Replace VS Code variables
 				const testUri = testItem.uri
 				if (testUri) {
 					processedArg = processedArg.replace(/\$\{vscode:([^}]+)\}/g, (match, variable) => {
-						return resolveVSCodeVariable(variable, testUri, workspaceFolder);
+						return resolveVSCodeVariable(variable, testUri, workspaceFolder, testItem?.range?.start?.line || 0);
 					});
 				}
 
@@ -400,13 +400,13 @@ async function runTasks(
 
 			/**
 			 * Running the command with shellPath/shellArgs closes the terminal immediately after command completion.
-			 * 
+			 *
 			 * Using a vscode pty allows for programmatic capture of process outputs,
 			 * but does not forward shell signals (Ctrl-C, etc.) well.
-			 * 
+			 *
 			 * Using node-pty from node does not work in the VS Code extension environment.
 			 * See https://github.com/microsoft/node-pty/issues/582
-			 * 
+			 *
 			 * Importing node-pty from the version bundled with VS Code seems to work,
 			 * but is not officially supported and is recommended against by Microsoft engineers.
 			 * See https://github.com/microsoft/vscode/issues/658#issuecomment-982842847 for how.
@@ -418,7 +418,7 @@ async function runTasks(
 						name: `GutterAid: ${testItem.label}`,
 						cwd: workspaceFolder.uri.fsPath,
 						env: process.env,
-					});	
+					});
 					break;
 				case 'active':
 				case undefined:
@@ -428,7 +428,7 @@ async function runTasks(
 							name: `GutterAid: ${testItem.label}`,
 							cwd: workspaceFolder.uri.fsPath,
 							env: process.env,
-						});	
+						});
 					break;
 				default:
 					const terminalName = terminalBehavior?.replace(/\$\{group:(\d+)\}/g, (match, index) => {
@@ -439,7 +439,7 @@ async function runTasks(
 					}).replace(/\$\{vscode:([^}]+)\}/g, (match, variable) => {
 						const testUri = testItem.uri;
 						if (testUri) {
-							return resolveVSCodeVariable(variable, testUri, workspaceFolder);
+							return resolveVSCodeVariable(variable, testUri, workspaceFolder, testItem?.range?.start?.line || 0);
 						} else {
 							return match;
 						}
@@ -471,7 +471,7 @@ async function runTasks(
 			} else {
 				run.failed(testItem, new vscode.TestMessage(`Process exited with code ${exitCode}`));
 			}
-			
+
 		} catch (error) {
 			run.failed(testItem, new vscode.TestMessage(`Failed to run task: ${error}`));
 		}
@@ -483,7 +483,7 @@ async function runTasks(
 async function collectInputs(matcherId: string, argsToUse: string[], terminalBehavior: string | undefined): Promise<Map<string, string> | false> {
 	const config = vscode.workspace.getConfiguration('gutteraid');
 	const askEveryTime = config.get<boolean>('askForInputsEveryTime', true);
-	
+
 	// Extract input IDs that are actually used in the arguments
 	const usedInputIds = new Set<string>();
 	for (const arg of argsToUse) {
@@ -515,7 +515,7 @@ async function collectInputs(matcherId: string, argsToUse: string[], terminalBeh
 	}
 
 	const inputs = new Map<string, string>();
-	
+
 	// Start with cached inputs if available
 	if (cachedInputs) {
 		for (const [key, value] of cachedInputs) {
@@ -536,7 +536,7 @@ async function collectInputs(matcherId: string, argsToUse: string[], terminalBeh
 		}
 
 		let value: string | undefined;
-		
+
 		if (inputDef['type'] === 'promptString') {
 			value = await vscode.window.showInputBox({
 				prompt: inputDef['description'] ?? `Enter value for ${inputId}`,
@@ -555,7 +555,7 @@ async function collectInputs(matcherId: string, argsToUse: string[], terminalBeh
 				placeHolder: inputDef['description'] ?? `Select value for ${inputId}`,
 			});
 		}
-		
+
 		if (value !== undefined) {
 			inputs.set(inputId, value);
 		} else {
@@ -566,11 +566,11 @@ async function collectInputs(matcherId: string, argsToUse: string[], terminalBeh
 
 	// Cache the inputs for future use
 	inputCache.set(matcherId, inputs);
-	
+
 	return inputs;
 }
 
-function resolveVSCodeVariable(variable: string, fileUri: vscode.Uri, workspaceFolder: vscode.WorkspaceFolder): string {
+function resolveVSCodeVariable(variable: string, fileUri: vscode.Uri, workspaceFolder: vscode.WorkspaceFolder, lineNumber: number): string {
 	const filePath = fileUri.fsPath;
 	const fileName = path.basename(filePath);
 	const fileBasename = path.basename(filePath, path.extname(filePath));
@@ -605,6 +605,8 @@ function resolveVSCodeVariable(variable: string, fileUri: vscode.Uri, workspaceF
 			return workspaceFolder.uri.fsPath;
 		case 'pathSeparator':
 			return path.sep;
+		case 'lineNumber':
+			return String(lineNumber);
 		default:
 			logError(`Unknown VS Code variable: ${variable}`);
 			return `\${${variable}}`; // Return unresolved if unknown
@@ -621,7 +623,7 @@ function loadTaskPatterns(patternsPath: string, localPatternsPath: string): Task
 	if (!workspaceFolder) {
 		return { 'matchers': [] };
 	}
-	
+
 	outputChannel.trace(`Patterns file: ${patternsPath}`);
 	outputChannel.trace(`Local patterns file: ${localPatternsPath}`);
 
@@ -650,7 +652,7 @@ function loadTaskPatterns(patternsPath: string, localPatternsPath: string): Task
 
 		// Merge patterns
 		const merged = mergePatterns(basePatterns, localPatterns);
-		
+
 		// Parse input definitions
 		inputDefinitions.clear();
 		if (merged['inputs']) {
