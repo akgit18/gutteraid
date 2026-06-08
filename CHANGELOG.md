@@ -14,6 +14,12 @@
 - Multiple matchers in the same file with conflict resolution
 - Multiple QuickPick selections
 
+## [Prerelease]
+
+### Added
+
+- Support lineStart as an additional VSCode variable
+
 ## [0.0.2] - 2026-01-21
 
 - Increase discoverability & convenience of input choice caching
