@@ -1,7 +1,9 @@
 ## [Unreleased]
+
 ### Definitely planned improvements:
 
 ### Possible future improvements:
+
 - Automated testing for this repo
 - Command inputs
 - Commands run using the shell of choice, not just whatever default terminal shell is

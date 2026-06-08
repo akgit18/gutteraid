@@ -14,10 +14,10 @@ Extension configuration is inspired by VSCode task configuration. Configuration 
         {
             "filePattern": string; // Glob pattern for files in which to look. If a file matches multiple matcher filePatterns, the first match will be used.
             "taskPattern": string; // Regex pattern for lines to add task's gutter icons to
-            "scripts": [Script, Script, Script] // type Script  = [string, ...string[]] | never[] | undefined. The first script corresponds to Run, the second to Debug, and the third to (Run with) Coverage. 
+            "scripts": [Script, Script, Script] // type Script  = [string, ...string[]] | never[] | undefined. The first script corresponds to Run, the second to Debug, and the third to (Run with) Coverage.
             "name"?: string; // Name for the task. Shows up when viewing task items in the test explorer. If left undefined, first defaults to the first capturing group, and then to the file uri + line number, if no regex groups were captured by the matcher.
             "terminal"?: 'new' | 'active' | string // Terminal to run the task in--'new' will always spawn a new terminal, 'active' will use the currently open terminal (or spawn a new one if there is none), and any other string will be used as a terminal id (spawning a terminal with that id if there is none). Default is 'active'.
-            "killSignal"?: 'dispose' | string // If 'dispose', disposes the terminal when a task is canceled. Otherwise, sends the text to the terminal. Default is '\\u0003' (SIGINT, aka Ctrl-C, stringified). 
+            "killSignal"?: 'dispose' | string // If 'dispose', disposes the terminal when a task is canceled. Otherwise, sends the text to the terminal. Default is '\\u0003' (SIGINT, aka Ctrl-C, stringified).
         },
     ],
     // inputs are uniquely identified by id
@@ -37,13 +37,13 @@ Scripts consist of an executable command, followed by its arguments.
 
 The following substitutions will be made for `scripts`:
 
-* `"${group:\d+}"`: The corresponding regex capturing group of the matching line(s) 
+- `"${group:\d+}"`: The corresponding regex capturing group of the matching line(s)
 
-* `"${input:<id>}"`: The input with the corresponding id
+- `"${input:<id>}"`: The input with the corresponding id
 
-* `"${vscode:<id>}"`: A vscode variable that can be used in tasks.json.
+- `"${vscode:<id>}"`: A vscode variable that can be used in tasks.json.
 
-* Any other string will just be treated as a string
+- Any other string will just be treated as a string
 
 `terminal` will have the same substitutions made. `name` will have the same substitutions made, except for inputs, because the task name must be set before inputs can be gotten from the user.
 
@@ -55,15 +55,15 @@ Since this extension heavily relies on the configuration mentioned above, errors
 
 ### Settings
 
-* `gutteraid.askForInputsEveryTime`
-  * Whether to ask for user inputs every time a command is run, or just re-use the previous inputs. If set to false, you can reset inputs for a task by right-clicking the task's gutter icon and selecting the menu item `GutterAid: Reset cached input choices`. This also appears in the context menu for the test item's entry in the test explorer view.
-  * Caching is done on a by-input-id level.
-  * Now that you know how to reset previous inputs when you want to change them, I recommend setting this to false.
-  * Boolean. Default: `true`
+- `gutteraid.askForInputsEveryTime`
+  - Whether to ask for user inputs every time a command is run, or just re-use the previous inputs. If set to false, you can reset inputs for a task by right-clicking the task's gutter icon and selecting the menu item `GutterAid: Reset cached input choices`. This also appears in the context menu for the test item's entry in the test explorer view.
+  - Caching is done on a by-input-id level.
+  - Now that you know how to reset previous inputs when you want to change them, I recommend setting this to false.
+  - Boolean. Default: `true`
 
-* `gutteraid.alertOnError`
-  * Also alert errors that get logged to the extension's output channel.
-  * Boolean. Default: `false`
+- `gutteraid.alertOnError`
+  - Also alert errors that get logged to the extension's output channel.
+  - Boolean. Default: `false`
 
 ### FAQ
 
