@@ -251,7 +251,10 @@ function showInputResetMessage(taskLabel?: string) {
 
 function processDocument(document: vscode.TextDocument, controller: vscode.TestController) {
   // always ignore this extension's output channel
-  if (document.uri.scheme === 'output' && document.fileName.endsWith(outputChannel.name)) {
+  if (
+    document.uri.scheme === 'output' &&
+    (document.fileName.endsWith(outputChannel.name) || document.fileName.endsWith(outputChannel.name + '.log'))
+  ) {
     return;
   }
 
