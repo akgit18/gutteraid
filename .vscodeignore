@@ -5,7 +5,8 @@ src/**
 .gitignore
 vsc-extension-quickstart.md
 **/tsconfig.json
-**/eslint.config.mjs
+**/.oxfmtrc.json
+**/.oxlintrc.json
 **/*.ts
 **/*.map
 **/.vscode-test.*

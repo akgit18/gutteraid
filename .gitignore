@@ -1,6 +1,5 @@
 node_modules
 out/
-.vscode/extensions.json
 .vscode/settings.json
 *.vsix
 vsc-extension-quickstart.md

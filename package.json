@@ -122,17 +122,21 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
-    "lint": "eslint src",
+    "lint": "oxlint src --fix --fix-suggestions",
+    "lint:check": "oxlint src",
+    "fmt": "oxfmt .",
     "test": "vscode-test"
   },
   "dependencies": {
-    "picomatch": "4.0.3",
-    "chokidar": "4.0.3"
+    "chokidar": "^5.0.0",
+    "picomatch": "^4.0.4"
   },
   "devDependencies": {
-    "@types/vscode": "^1.93.0",
     "@types/node": "22.x",
-    "@types/picomatch": "4.0.2",
-    "typescript": "^5.9.2"
+    "@types/picomatch": "^4.0.3",
+    "@types/vscode": "^1.118.0",
+    "oxfmt": "^0.52.0",
+    "oxlint": "^1.67.0",
+    "typescript": "^6.0.3"
   }
 }

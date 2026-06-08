@@ -1,0 +1,11 @@
+{
+  "bracketSpacing": false,
+  "printWidth": 140,
+  "quoteProps": "preserve",
+  "semi": true,
+  "singleQuote": true,
+  "sortImports": {
+    "newlinesBetween": false
+  },
+  "ignorePatterns": ["node_modules/**", "out/**", "\\.*/**", "package.json", "package-lock.json"]
+}

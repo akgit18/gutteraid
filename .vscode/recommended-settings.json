@@ -1,0 +1,12 @@
+{
+    // provide schema for settings.json to this file
+    "$schema": "vscode://schemas/settings/folder",
+    // copy the below into your settings.json and adjust to your preference
+    "editor.defaultFormatter": "oxc.oxc-vscode",
+    "editor.formatOnSave": true,
+    "oxc.enable": true,
+    "oxc.disableNestedConfig": true,
+    "oxc.enable.oxfmt": true,
+    "oxc.enable.oxlint": true,
+    "oxc.fmt.configPath": ".oxfmtrc.json"
+}

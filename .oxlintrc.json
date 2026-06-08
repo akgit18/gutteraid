@@ -1,0 +1,11 @@
+{
+  "rules": {
+    "arrow-body-style": ["error", "as-needed"],
+    "eqeqeq": ["error", "always"],
+    "no-var": "error",
+    "prefer-const": "error",
+    "no-unused-expressions": "error",
+    "no-unused-vars": "warn",
+    "object-shorthand": "error"
+  }
+}
