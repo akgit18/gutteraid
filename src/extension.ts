@@ -304,7 +304,7 @@ function processDocument(document: vscode.TextDocument, controller: vscode.TestC
           const groupIndex = parseInt(index);
           return match[groupIndex] || '';
         })
-        ?.replace(/\$\{vscode:([^}]+)\}/g, (_, variable) => resolveVSCodeVariable(variable, document.uri, workspaceFolder)) ??
+        ?.replace(/\$\{vscode:([^}]+)\}/g, (_, variable) => resolveVSCodeVariable(variable, document.uri, workspaceFolder, line)) ??
       match[1] ??
       taskId;
 
@@ -405,7 +405,7 @@ async function runTasks(
         const testUri = testItem.uri;
         if (testUri) {
           processedArg = processedArg.replace(/\$\{vscode:([^}]+)\}/g, (match, variable) =>
-            resolveVSCodeVariable(variable, testUri, workspaceFolder),
+            resolveVSCodeVariable(variable, testUri, workspaceFolder, testItem?.range?.start.line ?? 0),
           );
         }
 
@@ -456,7 +456,7 @@ async function runTasks(
             .replace(/\$\{vscode:([^}]+)\}/g, (match, variable) => {
               const testUri = testItem.uri;
               if (testUri) {
-                return resolveVSCodeVariable(variable, testUri, workspaceFolder);
+                return resolveVSCodeVariable(variable, testUri, workspaceFolder, testItem?.range?.start.line ?? 0);
               } else {
                 return match;
               }
@@ -592,7 +592,7 @@ async function collectInputs(
   return inputs;
 }
 
-function resolveVSCodeVariable(variable: string, fileUri: vscode.Uri, workspaceFolder: vscode.WorkspaceFolder): string {
+function resolveVSCodeVariable(variable: string, fileUri: vscode.Uri, workspaceFolder: vscode.WorkspaceFolder, line: number): string {
   const filePath = fileUri.fsPath;
   const fileName = path.basename(filePath);
   const fileBasename = path.basename(filePath, path.extname(filePath));
@@ -627,6 +627,9 @@ function resolveVSCodeVariable(variable: string, fileUri: vscode.Uri, workspaceF
       return workspaceFolder.uri.fsPath;
     case 'pathSeparator':
       return path.sep;
+    case 'lineStart':
+      // line numbers seen in VSCode are 1-based
+      return (line + 1).toString();
     default:
       logError(`Unknown VS Code variable: ${variable}`);
       return `\${${variable}}`; // Return unresolved if unknown

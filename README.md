@@ -41,7 +41,9 @@ The following substitutions will be made for `scripts`:
 
 - `"${input:<id>}"`: The input with the corresponding id
 
-- `"${vscode:<id>}"`: A vscode variable that can be used in tasks.json.
+- `"${vscode:<id>}"`:
+  - A vscode variable that can be used in tasks.json
+  - `lineStart`, the first line of the match (1-based, as line numbers in VSCode are)
 
 - Any other string will just be treated as a string
 
